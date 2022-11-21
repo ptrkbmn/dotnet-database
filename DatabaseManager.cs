@@ -15,33 +15,33 @@ namespace pbdev.Database
   class CommonOptions
   {
     [Option("dbserver", HelpText = "Database Server", Default = "localhost")]
-    public string DBServer { get; set; }
+    public string? DBServer { get; set; }
 
     [Option("dbname", Required = true, HelpText = "Database name")]
-    public string DBName { get; set; }
+    public string? DBName { get; set; }
 
     [Option("dbuser", Required = true, HelpText = "Database user")]
-    public string DBUser { get; set; }
+    public string? DBUser { get; set; }
 
     [Option("dbpassword", Required = true, HelpText = "Database user password")]
-    public string DBPassword { get; set; }
+    public string? DBPassword { get; set; }
   }
 
   [Verb("create")]
   class CreateOptions : CommonOptions
   {
     [Option("user", Required = true, HelpText = "Email address of the new user", SetName = "user")]
-    public string UserEmail { get; set; }
+    public string? UserEmail { get; set; }
 
     [Option("role", Required = true, HelpText = "Name of the new role", SetName = "role")]
-    public string Role { get; set; }
+    public string? Role { get; set; }
   }
 
   [Verb("reset")]
   class ResetOptions : CommonOptions
   {
     [Option("password", Required = true, HelpText = "Email address of the user")]
-    public string UserEmail { get; set; }
+    public string? UserEmail { get; set; }
   }
 
   [Verb("db")]
@@ -69,10 +69,12 @@ namespace pbdev.Database
           if (!String.IsNullOrEmpty(o.UserEmail))
           {
             var userManager = serviceProvider.GetService<UserManager<TIdentityUser>>();
+            if(userManager == null)
+              throw new Exception("Unable to resolve UserManager...");
 
             string password = GeneratePassword();
 
-            var user = (TIdentityUser)Activator.CreateInstance(typeof(TIdentityUser));
+            var user = (TIdentityUser)Activator.CreateInstance(typeof(TIdentityUser))!;
             user.UserName = o.UserEmail;
             user.Email = o.UserEmail;
             var result = userManager.CreateAsync(user, password).Result;
@@ -96,6 +98,9 @@ namespace pbdev.Database
           if (!String.IsNullOrEmpty(o.UserEmail))
           {
             var userManager = serviceProvider.GetService<UserManager<TIdentityUser>>();
+            if(userManager == null)
+              throw new Exception("Unable to resolve UserManager...");
+
             var user = userManager.FindByNameAsync(o.UserEmail).Result;
             if (user != null)
             {
@@ -162,18 +167,18 @@ namespace pbdev.Database
       var services = new ServiceCollection();
       services.AddDbContextPool<TDbContext>(options =>
       {
-        options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), options => { });
+        // options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), options => { });
       });
       services.AddLogging();
       services.AddIdentity<TIdentityUser, IdentityRole>()
         .AddEntityFrameworkStores<TDbContext>()
         .AddDefaultTokenProviders();
 
-      services.AddScoped(p => (TDbContext)Activator.CreateInstance(typeof(TDbContext), p.GetService<DbContextOptions<TDbContext>>()));
+      services.AddScoped(p => (TDbContext)Activator.CreateInstance(typeof(TDbContext), p.GetService<DbContextOptions<TDbContext>>())!);
       return services.BuildServiceProvider();
     }
 
-    public static string GeneratePassword(int length = 16, IEnumerable<char> characterSet = null)
+    public static string GeneratePassword(int length = 16, IEnumerable<char>? characterSet = null)
     {
       if (characterSet == null)
         characterSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!$%&#+-";
