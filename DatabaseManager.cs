@@ -8,32 +8,39 @@ using CommandLine;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace pbdev.Database
 {
   class CommonOptions
   {
-    [Option("dbserver", HelpText = "Database Server", Default = "localhost")]
+    [Option("dbtype", Required = true, HelpText = "Database type (mysql or sqlite)")]
+    public string DBType { get; set; } = default!;
+
+    [Option("dbserver", HelpText = "Database server", Default = "localhost", SetName = "sql")]
     public string? DBServer { get; set; }
 
-    [Option("dbname", Required = true, HelpText = "Database name")]
+    [Option("dbname", Required = true, HelpText = "Database name ", SetName = "sql")]
     public string? DBName { get; set; }
 
-    [Option("dbuser", Required = true, HelpText = "Database user")]
+    [Option("dbuser", HelpText = "Database user", SetName = "sql")]
     public string? DBUser { get; set; }
 
-    [Option("dbpassword", Required = true, HelpText = "Database user password")]
+    [Option("dbpassword", HelpText = "Database user password", SetName = "sql")]
     public string? DBPassword { get; set; }
+
+    [Option("dbfile", Required = true, HelpText = "Database file", SetName = "sqlite")]
+    public string? DBFile { get; set; }
   }
 
   [Verb("create")]
   class CreateOptions : CommonOptions
   {
-    [Option("user", Required = true, HelpText = "Email address of the new user", SetName = "user")]
+    [Option("user", Required = true, HelpText = "Email address of the new user")]
     public string? UserEmail { get; set; }
 
-    [Option("role", Required = true, HelpText = "Name of the new role", SetName = "role")]
+    [Option("role", Required = true, HelpText = "Name of the new role")]
     public string? Role { get; set; }
   }
 
@@ -47,10 +54,10 @@ namespace pbdev.Database
   [Verb("db")]
   class DatabaseOptions : CommonOptions
   {
-    [Option("migrate", HelpText = "Perform database migrations", SetName = "migrate")]
+    [Option("migrate", HelpText = "Perform database migrations")]
     public bool Migrate { get; set; }
 
-    [Option("init", HelpText = "Initialize roles and other stuff", SetName = "init")]
+    [Option("init", HelpText = "Initialize roles and other stuff")]
     public bool Initialize { get; set; }
   }
 
@@ -69,7 +76,7 @@ namespace pbdev.Database
           if (!String.IsNullOrEmpty(o.UserEmail))
           {
             var userManager = serviceProvider.GetService<UserManager<TIdentityUser>>();
-            if(userManager == null)
+            if (userManager == null)
               throw new Exception("Unable to resolve UserManager...");
 
             string password = GeneratePassword();
@@ -98,7 +105,7 @@ namespace pbdev.Database
           if (!String.IsNullOrEmpty(o.UserEmail))
           {
             var userManager = serviceProvider.GetService<UserManager<TIdentityUser>>();
-            if(userManager == null)
+            if (userManager == null)
               throw new Exception("Unable to resolve UserManager...");
 
             var user = userManager.FindByNameAsync(o.UserEmail).Result;
@@ -153,6 +160,9 @@ namespace pbdev.Database
               }
             }
           }
+          else {
+                Console.WriteLine("Invalid parameters");
+          }
         });
       }
       catch (Exception e)
@@ -163,11 +173,29 @@ namespace pbdev.Database
 
     private IServiceProvider GetServiceProvider(CommonOptions o)
     {
-      string connectionString = String.Format("server={0};user id={1};password={2};database={3}", o.DBServer, o.DBUser, o.DBPassword, o.DBName);
       var services = new ServiceCollection();
       services.AddDbContextPool<TDbContext>(options =>
       {
-        // options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), options => { });
+        switch (o.DBType)
+        {
+          case "sqlite":
+            {
+              options.UseSqlite("Filename=" + o.DBFile);
+              break;
+            }
+          case "mysql":
+            {
+              // https://github.com/PomeloFoundation/Pomelo.EntityFrameworkCore.MySql/issues/1557
+              // TODO: Wait for NET7.0 support
+              string connectionString = String.Format("server={0};user id={1};password={2};database={3}", o.DBServer, o.DBUser, o.DBPassword, o.DBName);
+              // options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), options => { });
+              break;
+            }
+          default:
+            {
+              throw new NotSupportedException(String.Format("Der Datenbanktyp {0} wird nicht unterstützt!", o.DBType));
+            }
+        }
       });
       services.AddLogging();
       services.AddIdentity<TIdentityUser, IdentityRole>()
