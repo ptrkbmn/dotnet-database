@@ -10,9 +10,16 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
+using pbdev.Common;
 
 namespace pbdev.Database
 {
+  public partial class Roles
+  {
+    public const string Administrator = "ADMINISTRATOR";
+    public const string User = "USER";
+  }
+
   class CommonOptions
   {
     [Option("dbtype", Required = true, HelpText = "Database type (mysql or sqlite)")]
@@ -149,8 +156,8 @@ namespace pbdev.Database
               var roles = idDbContext.Roles.ToList();
               if (!roles.Any())
               {
-                idDbContext.Roles.Add(new IdentityRole("Administrator") { NormalizedName = "ADMINISTRATOR" });
-                idDbContext.Roles.Add(new IdentityRole("User") { NormalizedName = "USER" });
+                idDbContext.Roles.Add(new IdentityRole(Roles.Administrator.ToLowerInvariant().ToUpperInvariantFirst()) { NormalizedName = Roles.Administrator });
+                idDbContext.Roles.Add(new IdentityRole(Roles.User.ToLowerInvariant().ToUpperInvariantFirst()) { NormalizedName = Roles.User });
                 idDbContext.SaveChanges();
                 Console.WriteLine("Initialized roles table");
               }
@@ -160,8 +167,9 @@ namespace pbdev.Database
               }
             }
           }
-          else {
-                Console.WriteLine("Invalid parameters");
+          else
+          {
+            Console.WriteLine("Invalid parameters");
           }
         });
       }
