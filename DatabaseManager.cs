@@ -18,6 +18,24 @@ namespace pbdev.Database
   {
     public const string Administrator = "ADMINISTRATOR";
     public const string User = "USER";
+
+    public static readonly string[] AllRoles = new[] { Administrator, User };
+
+    /// <summary>
+    /// Checks if the given role name is a valid role name. It also returns the
+    /// role name converted to uppercase.
+    /// </summary>
+    public static string CheckReturn(string? role)
+    {
+      if (String.IsNullOrEmpty(role))
+        throw new Exception("No role name given");
+
+      string roleUpper = role.ToUpperInvariant();
+      if (!AllRoles.Contains(roleUpper))
+        throw new Exception("Invalid role name");
+
+      return roleUpper;
+    }
   }
 
   class CommonOptions
@@ -41,18 +59,18 @@ namespace pbdev.Database
     public string? DBFile { get; set; }
   }
 
-  [Verb("create")]
-  class CreateOptions : CommonOptions
+  [Verb("create-user")]
+  class CreateUserOptions : CommonOptions
   {
-    [Option("user", Required = true, HelpText = "Email address of the new user")]
-    public string? UserEmail { get; set; }
+    [Option("email", Required = true, HelpText = "Email address of the new user")]
+    public string Email { get; set; } = default!;
 
-    [Option("role", Required = true, HelpText = "Name of the new role")]
-    public string? Role { get; set; }
+    [Option("role", HelpText = "The name of the role the user is added to")]
+    public string Role { get; set; } = Roles.User;
   }
 
-  [Verb("reset")]
-  class ResetOptions : CommonOptions
+  [Verb("reset-user")]
+  class ResetUserOptions : CommonOptions
   {
     [Option("password", Required = true, HelpText = "Email address of the user")]
     public string? UserEmail { get; set; }
@@ -71,42 +89,57 @@ namespace pbdev.Database
   public class DatabaseManager<TDbContext, TIdentityUser>
     where TDbContext : DbContext where TIdentityUser : IdentityUser
   {
+    public Action<IdentityOptions>? CustomIdentityOptionsAction { get; set; }
+
     public void ParseArguments(string[] args)
     {
       try
       {
-        Parser.Default.ParseArguments<CreateOptions, ResetOptions, DatabaseOptions>(args)
-        .WithParsed<CreateOptions>(o =>
+        Parser.Default.ParseArguments<CreateUserOptions, ResetUserOptions, DatabaseOptions>(args)
+        .WithParsed<CreateUserOptions>(o =>
         {
           var serviceProvider = GetServiceProvider(o);
 
-          if (!String.IsNullOrEmpty(o.UserEmail))
+          if (!String.IsNullOrEmpty(o.Email))
           {
             var userManager = serviceProvider.GetService<UserManager<TIdentityUser>>();
             if (userManager == null)
               throw new Exception("Unable to resolve UserManager...");
 
+            string role = Roles.CheckReturn(o.Role);
             string password = GeneratePassword();
 
             var user = (TIdentityUser)Activator.CreateInstance(typeof(TIdentityUser))!;
-            user.UserName = o.UserEmail;
-            user.Email = o.UserEmail;
-            var result = userManager.CreateAsync(user, password).Result;
-            if (result.Succeeded)
+            user.UserName = o.Email;
+            user.Email = o.Email;
+            var userResult = userManager.CreateAsync(user, password).Result;
+            if (userResult.Succeeded)
             {
               Console.WriteLine("New user created!");
-              Console.WriteLine("User name: {0}", o.UserEmail);
+              Console.WriteLine("User name: {0}", o.Email);
               Console.WriteLine("Password:  {0}", password);
             }
             else
             {
-              Console.WriteLine("Errors occurred!");
-              foreach (var e in result.Errors)
+              Console.WriteLine("Errors occurred (create user)!");
+              foreach (var e in userResult.Errors)
+                Console.WriteLine(e.Description);
+            }
+
+            var roleResult = userManager.AddToRoleAsync(user, role).Result;
+            if (roleResult.Succeeded)
+            {
+              Console.WriteLine("User added ro role {0}!", role);
+            }
+            else
+            {
+              Console.WriteLine("Errors occurred (add to role)!");
+              foreach (var e in userResult.Errors)
                 Console.WriteLine(e.Description);
             }
           }
         })
-        .WithParsed<ResetOptions>(o =>
+        .WithParsed<ResetUserOptions>(o =>
         {
           var serviceProvider = GetServiceProvider(o);
           if (!String.IsNullOrEmpty(o.UserEmail))
@@ -201,7 +234,7 @@ namespace pbdev.Database
             }
           default:
             {
-              throw new NotSupportedException(String.Format("Der Datenbanktyp {0} wird nicht unterstützt!", o.DBType));
+              throw new NotSupportedException(String.Format("The database type {0} is not supported!", o.DBType));
             }
         }
       });
@@ -211,6 +244,10 @@ namespace pbdev.Database
         .AddDefaultTokenProviders();
 
       services.AddScoped(p => (TDbContext)Activator.CreateInstance(typeof(TDbContext), p.GetService<DbContextOptions<TDbContext>>())!);
+
+      if(CustomIdentityOptionsAction != null)
+        services.Configure<IdentityOptions>(o => CustomIdentityOptionsAction.Invoke(o));
+
       return services.BuildServiceProvider();
     }
 
