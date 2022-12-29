@@ -10,14 +10,13 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
-using pbdev.Common;
 
 namespace pbdev.Database
 {
   public partial class Roles
   {
-    public const string Administrator = "ADMINISTRATOR";
-    public const string User = "USER";
+    public const string Administrator = "Administrator";
+    public const string User = "User";
 
     public static readonly string[] AllRoles = new[] { Administrator, User };
 
@@ -189,8 +188,8 @@ namespace pbdev.Database
               var roles = idDbContext.Roles.ToList();
               if (!roles.Any())
               {
-                idDbContext.Roles.Add(new IdentityRole(Roles.Administrator.ToLowerInvariant().ToUpperInvariantFirst()) { NormalizedName = Roles.Administrator });
-                idDbContext.Roles.Add(new IdentityRole(Roles.User.ToLowerInvariant().ToUpperInvariantFirst()) { NormalizedName = Roles.User });
+                idDbContext.Roles.Add(new IdentityRole(Roles.Administrator) { NormalizedName = Roles.Administrator.ToUpperInvariant() });
+                idDbContext.Roles.Add(new IdentityRole(Roles.User) { NormalizedName = Roles.User.ToUpperInvariant() });
                 idDbContext.SaveChanges();
                 Console.WriteLine("Initialized roles table");
               }
