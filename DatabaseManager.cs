@@ -106,7 +106,7 @@ namespace pbdev.Database
               throw new Exception("Unable to resolve UserManager...");
 
             string role = Roles.CheckReturn(o.Role);
-            string password = GeneratePassword();
+            string password = DatabaseHelper.GeneratePassword();
 
             var user = (TIdentityUser)Activator.CreateInstance(typeof(TIdentityUser))!;
             user.UserName = o.Email;
@@ -151,7 +151,7 @@ namespace pbdev.Database
             if (user != null)
             {
               string resetToken = userManager.GeneratePasswordResetTokenAsync(user).Result;
-              string newPassword = GeneratePassword();
+              string newPassword = DatabaseHelper.GeneratePassword();
               var result = userManager.ResetPasswordAsync(user, resetToken, newPassword).Result;
               if (result.Succeeded)
               {
@@ -244,27 +244,18 @@ namespace pbdev.Database
 
       services.AddScoped(p => (TDbContext)Activator.CreateInstance(typeof(TDbContext), p.GetService<DbContextOptions<TDbContext>>())!);
 
-      if(CustomIdentityOptionsAction != null)
+      if (CustomIdentityOptionsAction != null)
         services.Configure<IdentityOptions>(o => CustomIdentityOptionsAction.Invoke(o));
 
       return services.BuildServiceProvider();
     }
 
-    public static string GeneratePassword(int length = 16, IEnumerable<char>? characterSet = null)
-    {
-      if (characterSet == null)
-        characterSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!$%&#+-";
-
-      var characterArray = characterSet.Distinct().ToArray();
-      var bytes = new byte[length * 8];
-      RandomNumberGenerator.Create().GetBytes(bytes);
-      var result = new char[length];
-      for (int i = 0; i < length; i++)
-      {
-        ulong value = BitConverter.ToUInt64(bytes, i * 8);
-        result[i] = characterArray[value % (uint)characterArray.Length];
-      }
-      return new string(result);
-    }
   }
+
+  /// <summary>
+  /// DatabaseManager with the default IdentityUser type.
+  /// </summary>
+  public class DatabaseManager<TDbContext> : DatabaseManager<TDbContext, IdentityUser>
+    where TDbContext : DbContext
+  { }
 }
