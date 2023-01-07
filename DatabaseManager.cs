@@ -225,10 +225,8 @@ namespace pbdev.Database
             }
           case "mysql":
             {
-              // https://github.com/PomeloFoundation/Pomelo.EntityFrameworkCore.MySql/issues/1557
-              // TODO: Wait for NET7.0 support
               string connectionString = String.Format("server={0};user id={1};password={2};database={3}", o.DBServer, o.DBUser, o.DBPassword, o.DBName);
-              // options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), options => { });
+              options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), options => { });
               break;
             }
           default:
