@@ -17,6 +17,7 @@ namespace pbdev.Database
   {
     public const string Administrator = "Administrator";
     public const string User = "User";
+    public const string AdministratorOrUser = Administrator + "," + User;
 
     public static readonly string[] AllRoles = new[] { Administrator, User };
 
