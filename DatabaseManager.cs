@@ -31,7 +31,7 @@ namespace pbdev.Database
         throw new Exception("No role name given");
 
       string roleUpper = role.ToUpperInvariant();
-      if (!AllRoles.Contains(roleUpper))
+      if (!AllRoles.Select(r => r.ToUpperInvariant()).Contains(roleUpper))
         throw new Exception("Invalid role name");
 
       return roleUpper;
@@ -129,7 +129,7 @@ namespace pbdev.Database
             var roleResult = userManager.AddToRoleAsync(user, role).Result;
             if (roleResult.Succeeded)
             {
-              Console.WriteLine("User added ro role {0}!", role);
+              Console.WriteLine("User added to role {0}!", role);
             }
             else
             {
