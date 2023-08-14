@@ -16,10 +16,14 @@ namespace pbdev.Database
   public partial class Roles
   {
     public const string Administrator = "Administrator";
+    public const string Manager = "Manager";
     public const string User = "User";
+
+    public const string AdministratorOrManagerOrUser = Administrator + "," + Manager + "," + User;
+    public const string AdministratorOrManager = Administrator + "," + Manager;
     public const string AdministratorOrUser = Administrator + "," + User;
 
-    public static readonly string[] AllRoles = new[] { Administrator, User };
+    public static readonly string[] AllRoles = new[] { Administrator, Manager, User };
 
     /// <summary>
     /// Checks if the given role name is a valid role name. It also returns the
@@ -190,6 +194,7 @@ namespace pbdev.Database
               if (!roles.Any())
               {
                 idDbContext.Roles.Add(new IdentityRole(Roles.Administrator) { NormalizedName = Roles.Administrator.ToUpperInvariant() });
+                idDbContext.Roles.Add(new IdentityRole(Roles.Manager) { NormalizedName = Roles.Manager.ToUpperInvariant() });
                 idDbContext.Roles.Add(new IdentityRole(Roles.User) { NormalizedName = Roles.User.ToUpperInvariant() });
                 idDbContext.SaveChanges();
                 Console.WriteLine("Initialized roles table");
